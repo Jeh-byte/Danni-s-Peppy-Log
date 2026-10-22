@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Peptide Log</title>
+  <meta name="description" content="Offline peptide dose log. All data stays on your phone.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1 id="title">Log a dose</h1>
+    <button class="icon-btn" id="settingsBtn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.4-2.5a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.3 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.3-2.9a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5Z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- LOG -->
+    <section id="view-log" class="view active">
+      <div class="alerts" id="alerts" hidden></div>
+      <div class="today" id="today">
+        <div class="today-h"><span>Today</span><span class="today-sub" id="todaySub"></span></div>
+        <div id="todayList"></div>
+        <div class="today-next" id="todayNext"></div>
+      </div>
+      <div class="today checkin" id="checkin">
+        <button type="button" class="today-h ci-head" id="ciHead"><span>How do you feel today?</span><span class="today-sub" id="ciSub"></span></button>
+        <div id="ciBody">
+          <div class="ci-row"><span>Sleep</span><div class="scale" data-k="sleep"></div></div>
+          <div class="ci-row"><span>Energy</span><div class="scale" data-k="energy"></div></div>
+          <div class="ci-row"><span>Mood</span><div class="scale" data-k="mood"></div></div>
+          <label class="field"><span>Side effects</span><input id="ciSide" placeholder="e.g. nausea, headache, none"></label>
+          <div class="row">
+            <label class="field grow"><span>Weight</span><input id="ciWeight" type="number" inputmode="decimal" step="any" min="0"></label>
+            <label class="field unit"><span>&nbsp;</span><select id="ciWeightUnit"><option>kg</option><option>lb</option></select></label>
+            <label class="field grow"><span>Waist (cm)</span><input id="ciWaist" type="number" inputmode="decimal" step="any" min="0"></label>
+          </div>
+        </div>
+      </div>
+      <form id="logForm" autocomplete="off">
+        <div class="edit-banner" id="editBanner" hidden>Editing an earlier entry</div>
+
+        <label class="field">
+          <span>Peptide</span>
+          <select id="fPeptide" required></select>
+        </label>
+        <div class="hint" id="lastHint" hidden></div>
+
+        <div class="row">
+          <label class="field grow">
+            <span>Dose</span>
+            <input id="fDose" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 250">
+          </label>
+          <label class="field unit">
+            <span>&nbsp;</span>
+            <select id="fDoseUnit"><option>mcg</option><option>mg</option><option>IU</option></select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field grow">
+            <span>Volume</span>
+            <input id="fVolume" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 0.1">
+          </label>
+          <label class="field unit">
+            <span>&nbsp;</span>
+            <select id="fVolumeUnit"><option value="mL">mL</option><option value="units">units</option></select>
+          </label>
+        </div>
+        <div class="hint subtle" id="volHint"></div>
+
+        <div class="row">
+          <label class="field grow">
+            <span>Date and time</span>
+            <input id="fWhen" type="datetime-local" required>
+          </label>
+          <button type="button" class="btn ghost now-btn" id="nowBtn">Now</button>
+        </div>
+
+        <div class="field">
+          <span>Injection site</span>
+          <div class="chips" id="siteChips"></div>
+          <input id="fSiteOther" type="text" placeholder="Describe site" hidden>
+        </div>
+
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="fNotes" rows="2" placeholder="Optional"></textarea>
+        </label>
+
+        <div class="actions">
+          <button type="submit" class="btn primary" id="saveBtn">Save dose</button>
+          <button type="button" class="btn ghost" id="cancelEditBtn" hidden>Cancel</button>
+          <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view">
+      <div class="seg" id="histSeg">
+        <button type="button" data-seg="list" class="on">List</button>
+        <button type="button" data-seg="calendar">Calendar</button>
+        <button type="button" data-seg="progress">Progress</button>
+      </div>
+      <div id="histCal" hidden>
+        <div class="cal-nav"><button type="button" class="btn ghost small" id="calPrev" aria-label="Previous month">‹</button><strong id="calTitle"></strong><button type="button" class="btn ghost small" id="calNext" aria-label="Next month">›</button></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div id="calDay"></div>
+      </div>
+      <div id="histProg" hidden>
+        <div class="chips cats" id="progRange"></div>
+        <div id="progBody"></div>
+      </div>
+      <div id="histMain">
+      <div class="row filters">
+        <select id="histFilter" aria-label="Filter by peptide"></select>
+        <input id="histSearch" type="search" placeholder="Search notes or site" aria-label="Search">
+      </div>
+      <div class="stats" id="histStats"></div>
+      <div id="histList"></div>
+      </div>
+    </section>
+
+    <!-- PEPTIDES -->
+    <section id="view-peptides" class="view">
+      <div class="hint" id="vialHint" hidden></div>
+      <h2 class="section-h first">Schedule</h2>
+      <div id="schedList"></div>
+      <button class="btn ghost block" id="addSchedBtn">+ Add to schedule</button>
+      <h2 class="section-h">Peptides</h2>
+      <button class="btn primary block" id="addPeptideBtn">+ Add peptide</button>
+      <div id="pepList"></div>
+      <h2 class="section-h">Mixing supplies</h2>
+      <div id="supplyList"></div>
+      <label class="toggle"><input type="checkbox" id="showArchived"> Show archived peptides</label>
+    </section>
+
+    <!-- CALCULATOR -->
+    <section id="view-calc" class="view">
+      <label class="field">
+        <span>Peptide (optional)</span>
+        <select id="cPeptide"></select>
+      </label>
+      <div class="row">
+        <label class="field grow"><span>Peptide in vial</span><input id="cAmount" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 10"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="cAmountUnit"><option>mg</option><option>mcg</option></select></label>
+      </div>
+      <label class="field"><span>Bac water added (mL)</span><input id="cBac" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 2"></label>
+      <div class="row">
+        <label class="field grow"><span>Dose you want</span><input id="cDose" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 250"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="cDoseUnit"><option>mcg</option><option>mg</option></select></label>
+      </div>
+      <div class="calc-out" id="calcOut"></div>
+      <button type="button" class="btn ghost block" id="calcLog" hidden>Log this dose</button>
+      <button type="button" class="btn ghost block" id="calcSave" hidden>Save this mix to the peptide</button>
+      <p class="disclaimer">For a U-100 insulin syringe, where 100 units = 1 mL. Double-check the numbers on your vial before drawing.</p>
+    </section>
+
+    <!-- INFO -->
+    <section id="view-info" class="view">
+      <div class="seg" id="infoSeg" role="tablist">
+        <button type="button" data-seg="mine" class="on">My peptides</button>
+        <button type="button" data-seg="library">Library</button>
+        <button type="button" data-seg="guides">Guides</button>
+      </div>
+      <input id="infoSearch" type="search" placeholder="Search peptides" aria-label="Search peptides">
+      <div class="chips cats" id="libCats" hidden></div>
+      <div id="infoList"></div>
+      <a class="card link-card" href="https://peptiderobot.com" target="_blank" rel="noopener">
+        <div class="line1"><span>Peptide Robot</span><span class="time">↗</span></div>
+        <div class="line2">peptiderobot.com · opens in your browser</div>
+      </a>
+      <p class="disclaimer">Summaries are general background, not medical advice. Your protocol fields are your own notes.</p>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-view="log" class="active">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>Log
+    </button>
+    <button data-view="history">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15 10h7V3l-2.64 2.64A8.97 8.97 0 0 0 13 3Zm-1 5v5l4 2.4.8-1.3-3.3-2V8z"/></svg>History
+    </button>
+    <button data-view="peptides">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 2h6v2h-1v2.1a2 2 0 0 1 2 1.9v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-1.9V4H9zm1 10v8h4v-8z"/></svg>Peptides
+    </button>
+    <button data-view="calc">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v4h10V4zm1 7v2h2v-2zm4 0v2h2v-2zm4 0v6h2v-6h-2zM8 15v2h2v-2zm4 0v2h2v-2zm-4 4v1h6v-1z"/></svg>Calc
+    </button>
+    <button data-view="info">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>Info
+    </button>
+  </nav>
+
+  <!-- Peptide editor -->
+  <dialog id="pepDialog">
+    <form method="dialog" id="pepForm">
+      <h2 id="pepDialogTitle">Add peptide</h2>
+      <label class="field"><span>Name</span><input id="pName" required></label>
+      <div class="row">
+        <label class="field grow"><span>Amount per vial</span><input id="pAmount" type="number" inputmode="decimal" step="any" min="0"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="pUnit"><option>mg</option><option>mcg</option><option>IU</option><option>mL</option></select></label>
+      </div>
+      <label class="field"><span>Bac water added (mL)</span><input id="pBac" type="number" inputmode="decimal" step="any" min="0" placeholder="Leave blank if not mixed"></label>
+      <div class="hint subtle" id="pStrength"></div>
+      <div class="row">
+        <label class="field grow"><span>Current vial mixed on</span><input id="pMixed" type="date"></label>
+        <button type="button" class="btn ghost now-btn" id="pNewVial">New vial</button>
+      </div>
+      <div class="hint subtle" id="pVialLeft"></div>
+      <label class="field"><span>Spare vials (not mixed yet)</span><input id="pCount" type="number" inputmode="numeric" step="1" min="0" value="1"></label>
+      <label class="field"><span>Notes</span><textarea id="pNotes" rows="2"></textarea></label>
+      <label class="toggle" id="pArchivedWrap"><input type="checkbox" id="pArchived"> Archived (hide from the log list)</label>
+      <div class="actions">
+        <button class="btn primary" value="save" id="pSave">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Schedule editor -->
+  <dialog id="schedDialog">
+    <form method="dialog" id="schedForm">
+      <h2 id="schedTitle">Add to schedule</h2>
+      <label class="field"><span>Peptide</span><select id="kPep" required></select></label>
+      <div class="row">
+        <label class="field grow"><span>Dose</span><input id="kDose" type="number" inputmode="decimal" step="any" min="0"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="kDoseUnit"><option>mcg</option><option>mg</option><option>IU</option></select></label>
+      </div>
+      <div class="hint subtle" id="kUnits"></div>
+      <div class="row">
+        <label class="field grow"><span>Repeat</span>
+          <select id="kRepeat"><option value="daily">Every day</option><option value="every">Every few days</option><option value="weekly">On certain days</option><option value="once">Just once</option></select>
+        </label>
+        <label class="field grow"><span>Time</span><input id="kTime" type="time" required></label>
+      </div>
+      <label class="field" id="kEveryWrap"><span>Every how many days</span><input id="kEvery" type="number" inputmode="numeric" min="2" step="1" value="2"></label>
+      <div class="field" id="kDaysWrap"><span>Days</span><div class="chips days" id="kDays"></div></div>
+      <label class="toggle" id="kCycleWrap"><input type="checkbox" id="kCycle"> On/off cycle (e.g. 28 days on, 28 off)</label>
+      <div class="row" id="kCycleRow">
+        <label class="field grow"><span>Days on</span><input id="kOn" type="number" inputmode="numeric" min="1" step="1"></label>
+        <label class="field grow"><span>Days off</span><input id="kOff" type="number" inputmode="numeric" min="0" step="1"></label>
+      </div>
+      <label class="field"><span id="kStartLabel">Starting</span><input id="kStart" type="date" required></label>
+      <div class="actions">
+        <button class="btn primary" value="save">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+        <button type="button" class="btn danger" id="kDelete" hidden>Delete</button>
+      </div>
+      <h2 class="section-h">Reminders</h2>
+      <p class="subtle-p">Add this to your phone's calendar so it alerts you at dose time, even when the app is closed.</p>
+      <button type="button" class="btn ghost block" id="kGcal">Add to Google Calendar</button>
+      <button type="button" class="btn ghost block" id="kIcs">Save calendar file (other calendar apps)</button>
+    </form>
+  </dialog>
+
+  <!-- Supply editor -->
+  <dialog id="supDialog">
+    <form method="dialog" id="supForm">
+      <h2>Edit supply</h2>
+      <label class="field"><span>Name</span><input id="sName" required></label>
+      <div class="row">
+        <label class="field grow"><span>Amount per vial</span><input id="sAmount" type="number" inputmode="decimal" step="any" min="0"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="sUnit"><option>mL</option><option>mg</option></select></label>
+      </div>
+      <label class="field"><span>Vials on hand</span><input id="sCount" type="number" inputmode="numeric" step="1" min="0"></label>
+      <div class="actions">
+        <button class="btn primary" value="save">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Peptide info -->
+  <dialog id="infoDialog">
+    <form method="dialog" id="infoForm">
+      <h2 id="infoTitle">Peptide</h2>
+      <div id="infoView"></div>
+      <div id="infoEdit" hidden>
+        <label class="field"><span>What it’s for</span><textarea id="iAbout" rows="3"></textarea></label>
+        <label class="field"><span>My dose</span><input id="iDose"></label>
+        <label class="field"><span>How often</span><input id="iFrequency"></label>
+        <label class="field"><span>Cycle</span><input id="iCycle" placeholder="e.g. 8 weeks on, 4 weeks off"></label>
+        <label class="field"><span>Mixing</span><input id="iMixing" placeholder="e.g. 10 mg + 2 mL bac water"></label>
+        <label class="field"><span>Notes</span><textarea id="iNotes" rows="3"></textarea></label>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="infoEditBtn">Edit</button>
+        <button type="button" class="btn ghost" id="infoAddBtn" hidden>Add to my peptides</button>
+        <button class="btn primary" value="save" id="infoSave" hidden>Save</button>
+        <button class="btn ghost" value="close" formnovalidate id="infoClose">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="setDialog">
+    <form method="dialog">
+      <h2>About this app</h2>
+      <div id="setBody"></div>
+      <h2 class="section-h">Backup and export</h2>
+      <p class="subtle-p" id="lastBackup"></p>
+      <button type="button" class="btn primary block" id="backupBtn">Save backup file</button>
+      <button type="button" class="btn ghost block" id="csvBtn">Export spreadsheet (CSV)</button>
+      <h2 class="section-h">Import or restore</h2>
+      <p class="subtle-p">Choose a backup file to restore it, or an import file (such as one Claude made from your notebook) to add its entries. Nothing already in your log is deleted.</p>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button type="button" class="btn ghost block" id="importBtn">Choose file</button>
+      <div class="actions"><button class="btn primary" value="close">Close</button></div>
+    </form>
+  </dialog>
+
+  <!-- Import preview -->
+  <dialog id="impDialog">
+    <form method="dialog">
+      <h2>Import entries</h2>
+      <div id="impBody"></div>
+      <div class="actions">
+        <button class="btn primary" value="import" id="impConfirm">Import</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="seed.js"></script>
+  <script src="info.js"></script>
+  <script src="library.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
