@@ -22,7 +22,11 @@ android {
         targetSdk 34
         versionCode 1
         versionName '1.0'
+        // Device tests build with -PwebDebug=true so they can inspect the WebView; release builds never do.
+        buildConfigField 'boolean', 'WEB_DEBUG', (project.findProperty('webDebug') == 'true').toString()
     }
+
+    buildFeatures { buildConfig true }
 
     sourceSets {
         main { assets.srcDirs += webOut }

@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
+        WebView.setWebContentsDebuggingEnabled(BuildConfig.WEB_DEBUG);
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
