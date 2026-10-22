@@ -708,6 +708,7 @@ const stamp = () => toLocalInput(new Date()).replace('T', '_').replace(':', '-')
 
 // Prefer the Android share sheet (Drive, email, Files) so the file can reach a computer; fall back to a download.
 async function saveFile(name, text, type) {
+  if (window.AndroidBridge) return window.AndroidBridge.saveFile(name, text, type); // APK build: native share sheet
   const blob = new Blob([text], { type });
   try {
     const file = new File([blob], name, { type });
@@ -1423,7 +1424,7 @@ $('kIcs').addEventListener('click', async () => {
     return;
   }
   resetForm(false);
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  if (!window.AndroidBridge && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();

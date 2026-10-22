@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The web app lives at the repo root; copy it into the APK's assets at build time.
+def webOut = file("$buildDir/generated/webassets")
+tasks.register('copyWeb', Copy) {
+    from(rootProject.projectDir.parentFile) {
+        include 'index.html', 'styles.css', '*.js', 'manifest.webmanifest', 'icons/**'
+    }
+    into new File(webOut, 'www')
+}
+tasks.named('preBuild') { dependsOn 'copyWeb' }
+
+android {
+    namespace 'com.danni.peppylog'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.danni.peppylog'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    sourceSets {
+        main { assets.srcDirs += webOut }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+}

@@ -13,3 +13,6 @@ When changing any file, bump `VERSION` in `sw.js` so installed phones pick up th
 
 ## Back up
 The app reminds you weekly. Settings > Save backup file, then send it to Drive or email. Settings > Choose file restores it.
+
+## Android APK
+`android/` wraps the web app in a native WebView. Every push to `main` builds `PeptideLog.apk` with GitHub Actions and attaches it to a new release under Releases. Download it on the phone and open it to install (allow installs from unknown sources when asked).
