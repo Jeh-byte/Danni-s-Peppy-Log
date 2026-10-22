@@ -1,4 +1,4 @@
-const APP_VERSION = '1.7.2';
+const APP_VERSION = '1.8.0';
 const SITES = ['Abdomen L', 'Abdomen R', 'Thigh L', 'Thigh R', 'Arm L', 'Arm R', 'Glute L', 'Glute R', 'Nasal', 'Oral', 'Topical', 'Other'];
 const ADD_NEW = '__add__';
 
@@ -561,6 +561,23 @@ async function seedInfo() {
     }
   }
   await DB.setMeta('infoSeeded', new Date().toISOString());
+}
+
+// Starting daily schedule from seed.js, added once (and only if no schedule exists yet).
+async function seedSchedules() {
+  if (await DB.getMeta('schedSeeded')) return;
+  if (!state.schedules.length) {
+    const byNorm = Object.fromEntries(state.peptides.filter((p) => !p.archived).map((p) => [normName(p.name), p]));
+    for (const s of window.SEED_SCHEDULES || []) {
+      const p = byNorm[normName(s.peptide)];
+      if (!p) continue;
+      state.schedules.push(await DB.put('schedules', {
+        active: true, peptideId: p.id, dose: s.dose, doseUnit: s.doseUnit, volume: s.volume, volumeUnit: 'units',
+        time: '08:00', repeat: 'daily', every: 2, days: [], start: todayKey(), cycleOn: null, cycleOff: null
+      }));
+    }
+  }
+  await DB.setMeta('schedSeeded', new Date().toISOString());
 }
 
 let infoSeg = 'mine', libCat = '';
@@ -1173,8 +1190,10 @@ function plannedVolume(p, dose, doseUnit) {
     .sort((a, b) => b.takenAt.localeCompare(a.takenAt))[0];
   return prev ? { volume: prev.volume, volumeUnit: prev.volumeUnit } : { volume: null, volumeUnit: 'mL' };
 }
+// A schedule's own units win; otherwise work them out from the mix.
+const schedVolume = (s, p) => (s.volume != null ? { volume: s.volume, volumeUnit: s.volumeUnit || 'units' } : plannedVolume(p, s.dose, s.doseUnit));
 function doseText(s, p) {
-  const v = plannedVolume(p, s.dose, s.doseUnit);
+  const v = schedVolume(s, p);
   return [s.dose != null ? `${fmtNum(s.dose)} ${s.doseUnit}` : '', v.volume != null ? `${fmtNum(v.volume)} ${v.volumeUnit}` : ''].filter(Boolean).join(' · ');
 }
 
@@ -1257,7 +1276,7 @@ $('todayList').addEventListener('click', async (e) => {
   if (!p) return;
   const rec = await DB.put('entries', {
     peptideId: p.id, peptideName: p.name,
-    dose: s.dose, doseUnit: s.doseUnit, ...plannedVolume(p, s.dose, s.doseUnit),
+    dose: s.dose, doseUnit: s.doseUnit, ...schedVolume(s, p),
     takenAt: new Date().toISOString(), site: '', notes: '', status: 'taken', vialId: null, scheduleId: s.id
   });
   state.entries.push(rec);
@@ -1297,6 +1316,7 @@ function openSched(s) {
   const last = !s && lastEntryFor($('kPep').value);
   $('kDose').value = fmtNum(s ? s.dose : last?.dose);
   $('kDoseUnit').value = (s ? s.doseUnit : last?.doseUnit) || 'mcg';
+  $('kVol').value = fmtNum(s?.volume);
   $('kTime').value = s?.time || '08:00';
   $('kRepeat').value = s?.repeat || 'daily';
   $('kEvery').value = s?.every || 2;
@@ -1321,9 +1341,9 @@ function schedForm() {
   $('kDays').innerHTML = DAY_NAMES.map((d, i) => `<button type="button" class="chip${kDays.includes(i) ? ' on' : ''}" data-d="${i}">${d}</button>`).join('');
   const p = state.peptides.find((x) => x.id === $('kPep').value);
   const v = plannedVolume(p, num($('kDose').value), $('kDoseUnit').value);
-  $('kUnits').textContent = v.volume != null && num($('kDose').value) != null ? `Draw ${fmtNum(v.volume)} ${v.volumeUnit}` : '';
+  $('kUnits').textContent = v.volume != null && num($('kDose').value) != null && num($('kVol').value) == null ? `Draw ${fmtNum(v.volume)} ${v.volumeUnit}` : '';
 }
-['kPep', 'kDose', 'kDoseUnit', 'kRepeat', 'kCycle'].forEach((id) => $(id).addEventListener('input', schedForm));
+['kPep', 'kDose', 'kDoseUnit', 'kVol', 'kRepeat', 'kCycle'].forEach((id) => $(id).addEventListener('input', schedForm));
 $('kDays').addEventListener('click', (e) => {
   const b = e.target.closest('.chip'); if (!b) return;
   const d = +b.dataset.d;
@@ -1336,6 +1356,7 @@ function schedFromForm() {
     ...(schedEditing || { active: true }),
     peptideId: $('kPep').value,
     dose: num($('kDose').value), doseUnit: $('kDoseUnit').value,
+    volume: num($('kVol').value), volumeUnit: 'units',
     time: $('kTime').value || '08:00', repeat: r,
     every: Math.max(2, Math.round(num($('kEvery').value) || 2)), days: [...kDays],
     start: $('kStart').value || todayKey(),
@@ -1415,6 +1436,7 @@ $('kIcs').addEventListener('click', async () => {
     await DB.seedIfEmpty();
     await load();
     await seedInfo();
+    await seedSchedules();
     state.weightUnit = (await DB.getMeta('weightUnit')) || 'kg';
     state.lastBackup = (await DB.getMeta('lastBackup')) || null;
     askPersist();
