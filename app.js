@@ -139,6 +139,8 @@ function strengthOf(vialAmount, vialUnit, bacMl) {
 }
 const pepStrength = (p) => (p ? strengthOf(p.vialAmount, p.vialUnit, p.bacMl) : null);
 const round1 = (n) => Math.round(n * 10) / 10;
+// Her pen clicks in whole units, so doses drawn from a mix are rounded to the nearest unit.
+const clicks = (n) => Math.max(1, Math.round(n));
 function mixText(p) { return p?.bacMl > 0 && p.vialAmount != null ? `${fmtNum(p.vialAmount)} ${p.vialUnit} + ${fmtNum(p.bacMl)} mL` : ''; }
 
 function renderVolHint() {
@@ -158,7 +160,7 @@ function autoUnits() {
   const conc = pepStrength(p);
   const mg = toMg(num($('fDose').value), $('fDoseUnit').value);
   if (conc && mg != null) {
-    $('fVolume').value = fmtNum(round1((mg / conc) * 100));
+    $('fVolume').value = fmtNum(clicks((mg / conc) * 100));
     $('fVolumeUnit').value = 'units';
   }
   renderVolHint();
@@ -877,8 +879,10 @@ function calcResult() {
   if (mg == null) { out.innerHTML = `<div class="rest">${strength}. 10 units = ${fmtNum(conc / 10)} mg.</div>`; return; }
   const units = (mg / conc) * 100;
   const doses = Math.floor(toMg(amount, $('cAmountUnit').value) / mg);
-  out.innerHTML = `<div class="big">${fmtNum(round1(units))} <small>units</small></div>
-    <div class="rest">= ${fmtNum(+(units / 100).toFixed(3))} mL · ${strength} · about ${doses} dose${doses === 1 ? '' : 's'} per vial</div>
+  const whole = clicks(units), given = (whole / 100) * conc;
+  const exact = Math.abs(whole - units) < 0.05 ? '' : ` · ${whole} clicks gives ${given < 1 ? `${fmtNum(Math.round(given * 1000))} mcg` : `${fmtNum(+given.toFixed(2))} mg`} (exact dose is ${fmtNum(round1(units))} units)`;
+  out.innerHTML = `<div class="big">${whole} <small>units</small></div>
+    <div class="rest">= ${fmtNum(+(whole / 100).toFixed(3))} mL${exact} · ${strength} · about ${doses} dose${doses === 1 ? '' : 's'} per vial</div>
     ${units > 100 ? '<div class="warn">More than one full 1 mL syringe. Check the numbers.</div>' : units < 2 ? '<div class="warn">Very small amount, hard to measure accurately.</div>' : ''}`;
 }
 $('calcLog').addEventListener('click', () => {
@@ -1211,7 +1215,7 @@ function repeatText(s) {
 // Units to draw for a dose, from the peptide's mix, or else the volume last used for that same dose.
 function plannedVolume(p, dose, doseUnit) {
   const conc = pepStrength(p), mg = toMg(dose, doseUnit);
-  if (conc && mg != null) return { volume: round1((mg / conc) * 100), volumeUnit: 'units' };
+  if (conc && mg != null) return { volume: clicks((mg / conc) * 100), volumeUnit: 'units' };
   const prev = state.entries.filter((e) => e.peptideId === p?.id && e.volume != null && e.dose === dose && e.doseUnit === doseUnit)
     .sort((a, b) => b.takenAt.localeCompare(a.takenAt))[0];
   return prev ? { volume: prev.volume, volumeUnit: prev.volumeUnit } : { volume: null, volumeUnit: 'mL' };
