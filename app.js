@@ -580,6 +580,32 @@ async function seedSchedules() {
   await DB.setMeta('schedSeeded', new Date().toISOString());
 }
 
+// One-off data changes from seed.js, each applied once.
+async function applySeedUpdates() {
+  const done = (await DB.getMeta('updatesApplied')) || [];
+  for (const u of window.SEED_UPDATES || []) {
+    if (done.includes(u.id)) continue;
+    const find = (name) => state.peptides.find((p) => !p.archived && normName(p.name).startsWith(normName(name)));
+    for (const { name, ...mix } of u.peptides || []) {
+      const p = find(name);
+      const rec = await DB.put('peptides', p ? { ...p, ...mix } : { name, vialCount: 1, notes: '', archived: false, ...mix });
+      if (p) Object.assign(p, rec); else state.peptides.push(rec);
+      for (const s of state.schedules.filter((x) => x.peptideId === rec.id && x.volume != null)) {
+        Object.assign(s, await DB.put('schedules', { ...s, volume: null }));
+      }
+    }
+    for (const { peptide, ...s } of u.schedules || []) {
+      const p = find(peptide);
+      if (!p || state.schedules.some((x) => x.peptideId === p.id && x.active !== false)) continue;
+      state.schedules.push(await DB.put('schedules', {
+        active: true, peptideId: p.id, volume: null, volumeUnit: 'units', time: '08:00', every: 2, days: [], cycleOn: null, cycleOff: null, ...s
+      }));
+    }
+    done.push(u.id);
+    await DB.setMeta('updatesApplied', done);
+  }
+}
+
 let infoSeg = 'mine', libCat = '';
 const LIB_CATS = ['Healing', 'Weight', 'Growth hormone', 'Brain', 'Sleep', 'Longevity', 'Skin', 'Immune', 'Sexual health', 'Other'];
 // Library names match loosely, so 'Retatrutide 20mg' finds 'Retatrutide'.
@@ -1437,6 +1463,7 @@ $('kIcs').addEventListener('click', async () => {
     await load();
     await seedInfo();
     await seedSchedules();
+    await applySeedUpdates();
     state.weightUnit = (await DB.getMeta('weightUnit')) || 'kg';
     state.lastBackup = (await DB.getMeta('lastBackup')) || null;
     askPersist();
