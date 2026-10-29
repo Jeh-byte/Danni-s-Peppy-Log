@@ -1244,6 +1244,7 @@ function renderToday() {
   box.hidden = false;
   if (!state.schedules.length) {
     $('todaySub').textContent = '';
+    $('todayStack').innerHTML = '';
     $('todayList').innerHTML = `<div class="today-empty">Add your usual doses to a schedule, then tick them off here with one tap.<br><button type="button" class="btn ghost small" id="todaySetup">Set up schedule</button></div>`;
     $('todayNext').textContent = '';
     $('todaySetup').onclick = () => show('peptides');
@@ -1251,6 +1252,8 @@ function renderToday() {
   }
   const items = todayItems();
   const done = items.filter((i) => i.entry).length;
+  const stackLeft = stackItems(items).filter((i) => !i.entry).length;
+  $('todayStack').innerHTML = stackLeft > 1 ? `<button type="button" class="btn primary stack-btn" id="stackBtn">Took KLOW stack (${stackLeft})</button>` : '';
   $('todaySub').textContent = items.length ? `${done} of ${items.length} done` : 'Nothing scheduled';
   $('todayList').innerHTML = items.map(({ s, entry }) => {
     const p = state.peptides.find((x) => x.id === s.peptideId);
@@ -1304,19 +1307,43 @@ $('todayList').addEventListener('click', async (e) => {
   const s = state.schedules.find((x) => x.id === row.dataset.sid);
   const p = state.peptides.find((x) => x.id === s?.peptideId);
   if (!p) return;
+  const rec = await logScheduled(s, p);
+  renderToday(); renderLastHint(); renderAlerts();
+  askPersist();
+  toast(`Logged ${p.name}`, () => unlog([rec]));
+});
+
+async function logScheduled(s, p) {
   const rec = await DB.put('entries', {
     peptideId: p.id, peptideName: p.name,
     dose: s.dose, doseUnit: s.doseUnit, ...schedVolume(s, p),
     takenAt: new Date().toISOString(), site: '', notes: '', status: 'taken', vialId: null, scheduleId: s.id
   });
   state.entries.push(rec);
+  return rec;
+}
+async function unlog(recs) {
+  for (const r of recs) await DB.del('entries', r.id);
+  state.entries = state.entries.filter((x) => !recs.includes(x));
+  renderToday(); renderLastHint(); renderAlerts();
+}
+
+// KLOW stack: GHK-Cu, KPV, BPC-157 and TB-500 taken together. One tap logs whichever of them are still due today.
+const KLOW = ['GHK-Cu', 'KPV', 'BPC-157', 'TB-500'].map(normName);
+const stackItems = (items) => items.filter(({ s }) => {
+  const p = state.peptides.find((x) => x.id === s.peptideId);
+  return p && KLOW.some((n) => normName(p.name).startsWith(n));
+});
+$('todayStack').addEventListener('click', async (e) => {
+  if (!e.target.closest('#stackBtn')) return;
+  const recs = [];
+  for (const { s } of stackItems(todayItems()).filter((i) => !i.entry)) {
+    recs.push(await logScheduled(s, state.peptides.find((x) => x.id === s.peptideId)));
+  }
+  if (!recs.length) return;
   renderToday(); renderLastHint(); renderAlerts();
   askPersist();
-  toast(`Logged ${p.name}`, async () => {
-    await DB.del('entries', rec.id);
-    state.entries = state.entries.filter((x) => x.id !== rec.id);
-    renderToday(); renderLastHint();
-  });
+  toast(`Logged KLOW stack (${recs.length})`, () => unlog(recs));
 });
 
 function renderSchedList() {

@@ -207,6 +207,7 @@ dialog p { margin: 0 0 10px; }
 .qtime { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .toast button { margin-left: 12px; background: none; border: 0; color: var(--accent); font: inherit; font-weight: 700; padding: 0; pointer-events: auto; }
 .toast.show { pointer-events: auto; }
+.stack-btn { width: 100%; margin: 4px 0 8px; }
 .today-next { font-size: 13px; color: var(--muted); padding: 6px 2px 8px; border-top: 1px solid var(--border); }
 .today-next:empty { display: none; }
 .today-empty { padding: 4px 2px 10px; font-size: 14px; color: var(--muted); }

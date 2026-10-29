@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION whenever any app file changes so phones pick up the update.
-const VERSION = 'peptide-log-2-v5';
+const VERSION = 'peptide-log-2-v6';
 const FILES = [
   './',
   './index.html',
