@@ -665,8 +665,9 @@ function renderLibrary() {
       <div class="line2">${esc(l.about)}</div>
     </button>`).join('') || '<div class="empty">Nothing matches.</div>';
 }
+const priceText = (name) => { const p = window.priceFor ? window.priceFor(name) : ''; return p ? `${p}\n${window.PRICE_NOTE}` : ''; };
 function libRows(l) {
-  return [['Also known as', l.aka], ['Status', l.status], ['How it’s taken', l.route], ['Watch for', l.watch]]
+  return [['Also known as', l.aka], ['Status', l.status], ['How it’s taken', l.route], ['Watch for', l.watch], ['Price guide', priceText(l.name)]]
     .filter(([, v]) => v).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
 }
 let libOpen = null;
